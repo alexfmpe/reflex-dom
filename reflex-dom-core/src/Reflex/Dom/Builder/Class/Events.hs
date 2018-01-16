@@ -115,7 +115,7 @@ data EventName :: EventTag -> * where
 newtype EventResult en = EventResult { unEventResult :: EventResultType en }
 
 type family EventResultType (en :: EventTag) :: * where
-  EventResultType 'ClickTag = ()
+  EventResultType 'ClickTag = (Int, Int)
   EventResultType 'DblclickTag = (Int, Int)
   EventResultType 'KeypressTag = Word
   EventResultType 'KeydownTag = Word

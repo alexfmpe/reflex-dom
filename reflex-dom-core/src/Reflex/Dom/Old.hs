@@ -212,7 +212,7 @@ emptyElWith' elementTag cfg = fmap fst $ elWith' elementTag cfg $ return ()
 
 {-# DEPRECATED _el_clicked "Use 'domEvent Click' instead" #-}
 _el_clicked :: Reflex t => Element EventResult d t -> Event t ()
-_el_clicked = domEvent Click
+_el_clicked = void . domEvent Click
 
 {-# DEPRECATED _el_element "Use '_element_raw' instead" #-}
 _el_element :: El t -> RawElement GhcjsDomSpace

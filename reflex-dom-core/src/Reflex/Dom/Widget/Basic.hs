@@ -123,7 +123,7 @@ display = dynText . fmap (T.pack . show)
 button :: DomBuilder t m => Text -> m (Event t ())
 button t = do
   (e, _) <- element "button" def $ text t
-  return $ domEvent Click e
+  return . void $ domEvent Click e
 
 --TODO: Should this be renamed to 'widgetView' for consistency with 'widgetHold'?
 -- | Given a Dynamic of widget-creating actions, create a widget that is recreated whenever the Dynamic updates.
@@ -260,7 +260,7 @@ newtype Link t
 linkClass :: DomBuilder t m => Text -> Text -> m (Link t)
 linkClass s c = do
   (l,_) <- elAttr' "a" ("class" =: c) $ text s
-  return $ Link $ domEvent Click l
+  return $ Link . void $ domEvent Click l
 
 link :: DomBuilder t m => Text -> m (Link t)
 link s = linkClass s ""
