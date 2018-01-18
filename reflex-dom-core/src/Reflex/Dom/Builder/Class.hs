@@ -60,7 +60,9 @@ import Data.Text (Text)
 import Data.Type.Coercion
 import GHCJS.DOM.Types (JSM)
 
-class Default (EventSpec d EventResult) => DomSpace d where
+class Default' a where def' :: a
+
+class (Default (EventSpec d EventResult), Default' (EventSpec d EventProps)) => DomSpace d where
   type EventSpec d :: (EventTag -> *) -> *
   type RawTextNode d :: *
   type RawElement d :: *
@@ -504,6 +506,14 @@ instance (Reflex t, er ~ EventResult, DomSpace s) => Default (ElementConfig er t
     , _elementConfig_initialAttributes = mempty
     , _elementConfig_modifyAttributes = Nothing
     , _elementConfig_eventSpec = def
+    }
+instance (Reflex t, er ~ EventProps, DomSpace s) => Default' (ElementConfig er t s) where
+  {-# INLINABLE def' #-}
+  def' = ElementConfig
+    { _elementConfig_namespace = Nothing
+    , _elementConfig_initialAttributes = mempty
+    , _elementConfig_modifyAttributes = Nothing
+    , _elementConfig_eventSpec = def'
     }
 
 instance (DomBuilder t m, PerformEvent t m, MonadFix m, MonadHold t m) => DomBuilder t (PostBuildT t m) where

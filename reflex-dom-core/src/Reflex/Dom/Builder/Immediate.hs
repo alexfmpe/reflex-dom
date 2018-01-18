@@ -461,24 +461,23 @@ ghcjsEventSpec_handler :: forall er en . Getter (GhcjsEventSpec er) ((EventName 
 ghcjsEventSpec_handler f (GhcjsEventSpec _ (GhcjsEventHandler b)) = phantom2 (f b)
 {-# INLINE ghcjsEventSpec_handler #-}
 #endif
-{-
-el' :: forall t m a. DomBuilder t m => Text -> m a -> m (Element EventResult (DomBuilderSpace m) t, a)
-el' elementTag = element elementTag def
- -}
 
 records_el' :: forall t m a. (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace) => Text -> m a -> m (Element EventProps (DomBuilderSpace m) t, a)
-records_el' tag = element tag $ ElementConfig Nothing mempty Nothing $ GhcjsEventSpec 
-                  { _ghcjsEventSpec_filters = mempty
-                  , _ghcjsEventSpec_handler = GhcjsEventHandler $ \(en, GhcjsDomEvent evt) -> do
-                      t :: DOM.EventTarget <- withIsEvent en $ Event.getTargetUnchecked evt --TODO: Rework this; fullAPIDomEventHandler shouldn't need to take this as an argument
-                      let e = uncheckedCastTo DOM.Element t
-                      runReaderT (fullAPIDomEventHandler e en) evt
-                  }
+records_el' tag = element tag $ def'
 
 test :: (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace) => m (Event t MouseEventProps)
 test = do
   (e, a) <- records_el' "button" $ pure ()
   pure $ onEvent Click e
+
+instance er ~ EventProps => Default' (GhcjsEventSpec er) where
+  def' = GhcjsEventSpec
+    { _ghcjsEventSpec_filters = mempty
+    , _ghcjsEventSpec_handler = GhcjsEventHandler $ \(en, GhcjsDomEvent evt) -> do
+        t :: DOM.EventTarget <- withIsEvent en $ Event.getTargetUnchecked evt --TODO: Rework this; defaultDomEventHandler shouldn't need to take this as an argument
+        let e = uncheckedCastTo DOM.Element t
+        runReaderT (fullAPIDomEventHandler e en) evt
+    }
 
 instance er ~ EventResult => Default (GhcjsEventSpec er) where
   def = GhcjsEventSpec
