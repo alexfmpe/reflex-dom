@@ -23,7 +23,8 @@ import Data.GADT.Compare
 #endif
 
 data EventTag
-   = AbortTag
+   = NewEventAPITag EventTag
+   | AbortTag
    | BlurTag
    | ChangeTag
    | ClickTag
@@ -71,6 +72,7 @@ data EventTag
    | TouchcancelTag
 
 data EventName :: EventTag -> * where
+  NewEventAPI :: EventName t -> EventName ('NewEventAPITag t)
   Abort :: EventName 'AbortTag
   Blur :: EventName 'BlurTag
   Change :: EventName 'ChangeTag
@@ -158,6 +160,7 @@ newtype EventProps en = EventProps  { unEventProps :: EventPropsType en }
 
 --  EventPropsType en = EventGroupPropsType (EventType en)
 type family EventPropsType (en :: EventTag) :: * where
+  EventPropsType ('NewEventAPITag e) = EventPropsType e
   EventPropsType 'ClickTag = MouseEventProps
   EventPropsType 'DblclickTag = MouseEventProps
   EventPropsType 'KeypressTag = KeyboardEventProps
@@ -209,6 +212,7 @@ type family EventPropsType (en :: EventTag) :: * where
 newtype EventResult en = EventResult { unEventResult :: EventResultType en }
 
 type family EventResultType (en :: EventTag) :: * where
+  EventResultType ('NewEventAPITag e) = EventPropsType e
   EventResultType 'ClickTag = ()
   EventResultType 'DblclickTag = (Int, Int)
   EventResultType 'KeypressTag = Word

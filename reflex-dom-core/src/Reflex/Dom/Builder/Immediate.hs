@@ -20,6 +20,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 #endif
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeInType #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 #ifdef ghcjs_HOST_OS
@@ -124,6 +125,7 @@ import Data.Functor.Constant
 import Data.Functor.Misc
 import Data.Functor.Product
 import Data.IORef
+import Data.Kind
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Monoid hiding (Product)
@@ -433,25 +435,8 @@ ghcjsEventSpec_handler f (GhcjsEventSpec _ (GhcjsEventHandler b)) = phantom2 (f 
 
 test :: (DomBuilder t m, DomBuilderSpace m ~ GhcjsDomSpace) => m (Event t MouseEventProps)
 test = do
-  (e, _) <- element "button" newConfig $ pure ()
-  pure $ onEvent Click e
-
-newConfig :: (Reflex t, DomSpace s, er ~ EventProps, GhcjsEventSpec er ~ (EventSpec s er)) => (ElementConfig er t s)
-newConfig = ElementConfig
-    { _elementConfig_namespace = Nothing
-    , _elementConfig_initialAttributes = mempty
-    , _elementConfig_modifyAttributes = Nothing
-    , _elementConfig_eventSpec = newSpec
-    }
-
-newSpec :: GhcjsEventSpec EventProps
-newSpec = GhcjsEventSpec
-    { _ghcjsEventSpec_filters = mempty
-    , _ghcjsEventSpec_handler = GhcjsEventHandler $ \(en, GhcjsDomEvent evt) -> do
-        t :: DOM.EventTarget <- withIsEvent en $ Event.getTargetUnchecked evt --TODO: Rework this; defaultDomEventHandler shouldn't need to take this as an argument
-        let e = uncheckedCastTo DOM.Element t
-        runReaderT (recordDomEventHandler e en) evt
-    }
+  (e, _) <- element "button" def $ pure ()
+  pure $ newEvent Click e
 
 instance er ~ EventResult => Default (GhcjsEventSpec er) where
   def = GhcjsEventSpec
@@ -1089,6 +1074,7 @@ instance (HasJS x m, ReflexHost t) => HasJS x (ImmediateDomBuilderT t m) where
   liftJS = lift . liftJS
 
 type family EventType en where
+  EventType ('NewEventAPITag e) = EventType e
   EventType 'AbortTag = UIEvent
   EventType 'BlurTag = FocusEvent
   EventType 'ChangeTag = DOM.Event
@@ -1137,8 +1123,9 @@ type family EventType en where
   EventType 'TouchcancelTag = TouchEvent
 
 {-# INLINABLE recordDomEventHandler #-}
-recordDomEventHandler :: IsElement e => e -> EventName en -> EventM e (EventType en) (Maybe (EventProps en))
-recordDomEventHandler e = fmap (Just . EventProps) . \case
+recordDomEventHandler :: IsElement e => e -> EventName en -> EventM e (EventType en) (EventResult ('NewEventAPITag en))
+recordDomEventHandler e = fmap EventResult . \case
+  NewEventAPI en -> fmap unEventResult $ recordDomEventHandler e en
   Click -> getMouseEventProps
   Dblclick -> getMouseEventProps
   Keypress -> getKeyboardEventProps
@@ -1189,56 +1176,59 @@ recordDomEventHandler e = fmap (Just . EventProps) . \case
 {-# INLINABLE defaultDomEventHandler #-}
 defaultDomEventHandler :: IsElement e => e -> EventName en -> EventM e (EventType en) (Maybe (EventResult en))
 defaultDomEventHandler e evt = fmap (Just . EventResult) $ case evt of
-  Click -> return ()
-  Dblclick -> getMouseEventCoords
-  Keypress -> getKeyEvent
-  Scroll -> fromIntegral <$> getScrollTop e
-  Keydown -> getKeyEvent
-  Keyup -> getKeyEvent
-  Mousemove -> getMouseEventCoords
-  Mouseup -> getMouseEventCoords
-  Mousedown -> getMouseEventCoords
-  Mouseenter -> return ()
-  Mouseleave -> return ()
-  Focus -> return ()
-  Blur -> return ()
-  Change -> return ()
-  Drag -> return ()
-  Dragend -> return ()
-  Dragenter -> return ()
-  Dragleave -> return ()
-  Dragover -> return ()
-  Dragstart -> return ()
-  Drop -> return ()
-  Abort -> return ()
-  Contextmenu -> return ()
-  Error -> return ()
-  Input -> return ()
-  Invalid -> return ()
-  Load -> return ()
-  Mouseout -> return ()
-  Mouseover -> return ()
-  Select -> return ()
-  Submit -> return ()
-  Beforecut -> return ()
-  Cut -> return ()
-  Beforecopy -> return ()
-  Copy -> return ()
-  Beforepaste -> return ()
-  Paste -> return ()
-  Reset -> return ()
-  Search -> return ()
-  Selectstart -> return ()
-  Touchstart -> getTouchEvent
-  Touchmove -> getTouchEvent
-  Touchend -> getTouchEvent
-  Touchcancel -> getTouchEvent
-  Mousewheel -> return ()
-  Wheel -> return ()
+    NewEventAPI en -> fmap unEventResult $ recordDomEventHandler e en
+    Click -> return ()
+    Dblclick -> getMouseEventCoords
+    Keypress -> getKeyEvent
+    Scroll -> fromIntegral <$> getScrollTop e
+    Keydown -> getKeyEvent
+    Keyup -> getKeyEvent
+    Mousemove -> getMouseEventCoords
+    Mouseup -> getMouseEventCoords
+    Mousedown -> getMouseEventCoords
+    Mouseenter -> return ()
+    Mouseleave -> return ()
+    Focus -> return ()
+    Blur -> return ()
+    Change -> return ()
+    Drag -> return ()
+    Dragend -> return ()
+    Dragenter -> return ()
+    Dragleave -> return ()
+    Dragover -> return ()
+    Dragstart -> return ()
+    Drop -> return ()
+    Abort -> return ()
+    Contextmenu -> return ()
+    Error -> return ()
+    Input -> return ()
+    Invalid -> return ()
+    Load -> return ()
+    Mouseout -> return ()
+    Mouseover -> return ()
+    Select -> return ()
+    Submit -> return ()
+    Beforecut -> return ()
+    Cut -> return ()
+    Beforecopy -> return ()
+    Copy -> return ()
+    Beforepaste -> return ()
+    Paste -> return ()
+    Reset -> return ()
+    Search -> return ()
+    Selectstart -> return ()
+    Touchstart -> getTouchEvent
+    Touchmove -> getTouchEvent
+    Touchend -> getTouchEvent
+    Touchcancel -> getTouchEvent
+    Mousewheel -> return ()
+    Wheel -> return ()
+
 
 {-# INLINABLE defaultDomWindowEventHandler #-}
 defaultDomWindowEventHandler :: DOM.Window -> EventName en -> EventM DOM.Window (EventType en) (Maybe (EventResult en))
 defaultDomWindowEventHandler w evt = fmap (Just . EventResult) $ case evt of
+--NewEventAPI en -> ???
   Click -> return ()
   Dblclick -> getMouseEventCoords
   Keypress -> getKeyEvent
@@ -1289,6 +1279,7 @@ defaultDomWindowEventHandler w evt = fmap (Just . EventResult) $ case evt of
 {-# INLINABLE withIsEvent #-}
 withIsEvent :: EventName en -> (IsEvent (EventType en) => r) -> r
 withIsEvent en r = case en of
+  NewEventAPI en' -> withIsEvent en' r
   Click -> r
   Dblclick -> r
   Keypress -> r
@@ -1338,6 +1329,7 @@ withIsEvent en r = case en of
 
 showEventName :: EventName en -> String
 showEventName en = case en of
+  NewEventAPI en' -> showEventName en'
   Abort -> "Abort"
   Blur -> "Blur"
   Change -> "Change"
@@ -1397,6 +1389,7 @@ instance DOM.IsDocumentAndElementEventHandlers ElementEventTarget
 {-# INLINABLE elementOnEventName #-}
 elementOnEventName :: IsElement e => EventName en -> e -> EventM e (EventType en) () -> JSM (JSM ())
 elementOnEventName en e_ = let e = ElementEventTarget (DOM.toElement e_) in case en of
+  NewEventAPI en' -> elementOnEventName en' e_
   Abort -> on e Events.abort
   Blur -> on e Events.blur
   Change -> on e Events.change
@@ -1447,6 +1440,7 @@ elementOnEventName en e_ = let e = ElementEventTarget (DOM.toElement e_) in case
 {-# INLINABLE windowOnEventName #-}
 windowOnEventName :: EventName en -> DOM.Window -> EventM DOM.Window (EventType en) () -> JSM (JSM ())
 windowOnEventName en e = case en of
+  NewEventAPI en' -> windowOnEventName en' e
   Abort -> on e Events.abort
   Blur -> on e Events.blur
   Change -> on e Events.change
@@ -1615,22 +1609,22 @@ getTouchEvent = do
     , _touchEventResult_touches = touches
     }
 
-shortcut :: (Reflex t, HasOnEvent t target eventName)
+shortcut :: (Reflex t, HasDomEvent t target eventName)
   => EventName eventName
-  -> (OnEventType target eventName -> a)
+  -> (DomEventType target ('NewEventAPITag eventName) -> a)
   -> target
   -> Event t a
-shortcut ev prop el = prop <$> onEvent ev el
+shortcut ev prop el = prop <$> newEvent ev el
 
-dblClick :: (MouseEventProps ~ OnEventType target 'DblclickTag,
+dblClick :: (MouseEventProps ~ DomEventType target ('NewEventAPITag 'DblclickTag),
              Reflex t,
-             HasOnEvent t target 'DblclickTag) =>
+             HasDomEvent t target 'DblclickTag) =>
             target -> Event t MouseEventProps
 dblClick = shortcut Dblclick id
 
-dblClickXY :: (MouseEventProps ~ OnEventType target 'DblclickTag,
+dblClickXY :: (MouseEventProps ~ DomEventType target ('NewEventAPITag 'DblclickTag),
               Reflex t,
-              HasOnEvent t target 'DblclickTag) =>
+              HasDomEvent t target 'DblclickTag) =>
               target -> Event t (Int, Int)
 dblClickXY = shortcut Dblclick (_mouseEventProps_clientX &&& _mouseEventProps_clientY)
 
