@@ -593,6 +593,25 @@ instance (DomBuilder t m, MonadFix m, MonadHold t m, Group q, Query q, Additive 
   wrapRawElement e = lift . wrapRawElement e
 
 -- * Convenience functions
+class HasOnEvent t target eventName where
+  type OnEventType target eventName :: *
+  onEvent :: EventName eventName -> target -> Event t (OnEventType target eventName)
+
+instance Reflex t => HasOnEvent t (Element EventProps d t) en where
+  type OnEventType (Element EventProps d t) en = EventPropsType en
+  {-# INLINABLE onEvent #-}
+  onEvent en e = coerceEvent $ Reflex.select (_element_events e) (WrapArg en)
+
+instance Reflex t => HasOnEvent t (InputElement EventProps d t) en where
+  type OnEventType (InputElement EventProps d t) en = EventPropsType en
+  {-# INLINABLE onEvent #-}
+  onEvent en = onEvent en . _inputElement_element
+
+instance Reflex t => HasOnEvent t (TextAreaElement EventProps d t) en where
+  type OnEventType (TextAreaElement EventProps d t) en = EventPropsType en
+  {-# INLINABLE onEvent #-}
+  onEvent en = onEvent en . _textAreaElement_element
+
 
 class HasDomEvent t target eventName where
   type DomEventType target eventName :: *
@@ -602,6 +621,7 @@ instance Reflex t => HasDomEvent t (Element EventResult d t) en where
   type DomEventType (Element EventResult d t) en = EventResultType en
   {-# INLINABLE domEvent #-}
   domEvent en e = coerceEvent $ Reflex.select (_element_events e) (WrapArg en)
+
 
 instance Reflex t => HasDomEvent t (InputElement EventResult d t) en where
   type DomEventType (InputElement EventResult d t) en = EventResultType en
