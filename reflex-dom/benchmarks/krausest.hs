@@ -56,7 +56,7 @@ bodyW seed = divClass "main" $ divClass "container" $ mdo
 
   dynMT <- mapAccum_ step (initial, empty) events
 
-  blank
+  elAttr "span" ("class" =: "preloadicon glyphicon glyphicon-remove" <> "aria-hidden" =: True) blank
 
 type Step = (Model, Table) -> (Model, TableDiff)
 
