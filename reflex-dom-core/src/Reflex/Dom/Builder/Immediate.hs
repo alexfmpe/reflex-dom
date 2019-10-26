@@ -112,17 +112,21 @@ module Reflex.Dom.Builder.Immediate
   , hoistTraverseWithKeyWithAdjust
   , traverseIntMapWithKeyWithAdjust'
   , hoistTraverseIntMapWithKeyWithAdjust
+
+  , clientX'
+  , clientY'
   ) where
 
 import Control.Concurrent
 import Control.Exception (bracketOnError)
-import Control.Lens (Identity(..), imapM_, iforM_, (^.), makeLenses)
+import Control.Lens (Identity(..), imapM_, iforM_, (&), (^.), (.~), makeLenses)
 import Control.Monad.Exception
 import Control.Monad.Primitive
 import Control.Monad.Reader
 import Control.Monad.Ref
 import Control.Monad.State.Strict (StateT, mapStateT, get, modify', gets, runStateT)
 import Data.Bitraversable
+import Data.Coerce (coerce)
 import Data.Default
 import Data.Dependent.Map (DMap)
 import Data.Dependent.Sum
@@ -149,6 +153,7 @@ import GHCJS.DOM.Node (appendChild_, getOwnerDocumentUnchecked, getParentNodeUnc
 import GHCJS.DOM.Types (liftJSM, askJSM, runJSM, JSM, MonadJSM, FocusEvent, IsElement, IsEvent, IsNode, KeyboardEvent, Node, TouchEvent, WheelEvent, uncheckedCastTo, ClipboardEvent)
 import GHCJS.DOM.UIEvent
 import Language.Javascript.JSaddle (call, eval)
+import qualified Rank2
 import Reflex.Adjustable.Class
 import Reflex.Class as Reflex
 import Reflex.Dom.Builder.Class
@@ -2204,7 +2209,7 @@ type family EventType en where
 defaultDomEventHandler :: IsElement e => e -> EventName en -> EventM e (EventType en) (Maybe (EventResult en))
 defaultDomEventHandler e evt = fmap (Just . EventResult) $ case evt of
   Click -> return ()
-  Dblclick -> getMouseEventCoords
+  Dblclick -> getMouseEventCoords' mouseEventResultAllExtractors
   Keypress -> getKeyEvent
   Scroll -> fromIntegral <$> getScrollTop e
   Keydown -> getKeyEvent
@@ -2254,7 +2259,7 @@ defaultDomEventHandler e evt = fmap (Just . EventResult) $ case evt of
 defaultDomWindowEventHandler :: DOM.Window -> EventName en -> EventM DOM.Window (EventType en) (Maybe (EventResult en))
 defaultDomWindowEventHandler w evt = fmap (Just . EventResult) $ case evt of
   Click -> return ()
-  Dblclick -> getMouseEventCoords
+  Dblclick -> getMouseEventCoords' mouseEventResultAllExtractors
   Keypress -> getKeyEvent
   Scroll -> Window.getScrollY w
   Keydown -> getKeyEvent
@@ -2559,6 +2564,79 @@ getKeyEvent = do
     charCode <- getCharCode e
     if charCode /= 0 then return charCode else
       getKeyCode e
+
+
+
+
+mouseEventResultNoExtractors :: forall t. MouseEventResultExtractors t () ()
+mouseEventResultNoExtractors = MouseEventResult
+  { _mouseEventResult_clientX = pure ()
+  , _mouseEventResult_clientY = pure ()
+  }
+
+mouseEventResultAllExtractors :: MouseEventResultExtractors t Int Int
+mouseEventResultAllExtractors = MouseEventResult
+  { _mouseEventResult_clientX = Compose getClientX
+  , _mouseEventResult_clientY = Compose getClientY
+  }
+
+{-
+mouseEventAskPayload'
+  :: (forall x y. MouseEventResultExtractors t x y -> MouseEventResultExtractors t x' y')
+  -> MouseEventResultExtractors t a b
+  -> MouseEventResultExtractors t x' y'
+mouseEventAskPayload' setter x = setter x
+-}
+{-
+mouseEventAskPayload''
+  :: (  MouseEventResult'
+         (ALens (MouseEventResult' x1 y) (MouseEventResult' x2 y) x1 x2)
+         (ALens (MouseEventResult' x y1) (MouseEventResult' x y2) y1 y2)
+     -> ALens (MouseEventResultExtractors t Int Int) (MouseEventResultExtractors t Int Int) b b
+     )
+  -> MouseEventResultExtractors t Int Int
+  -> MouseEventResultExtractors t Int Int
+-}
+{-
+mouseEventAskPayload'' field x = x & ls .~ mouseEventResultAllExtractors ^. lg
+  where
+    lg = cloneLens $ field mouseEventResultLenses
+    ls = cloneLens $ field mouseEventResultLenses
+-}
+
+mouseEventAskPayload lg ls x = x & ls .~ mouseEventResultAllExtractors ^. lg
+
+clientX'
+  :: MouseEventResultExtractors t () y
+  -> MouseEventResultExtractors t Int y
+clientX' = mouseEventAskPayload mouseEventResult_clientX mouseEventResult_clientX
+
+clientY'
+  :: MouseEventResultExtractors t x ()
+  -> MouseEventResultExtractors t x Int
+clientY' = mouseEventAskPayload mouseEventResult_clientY mouseEventResult_clientY
+
+{-# INLINABLE getMouseEventCoords' #-}
+getMouseEventCoords'
+  :: forall e t x y
+   . MouseEventResultExtractors t x y
+  -> EventM e MouseEvent (MouseEventResult' x y)
+getMouseEventCoords' extractors = do
+  let
+    a :: MouseEventResultF' x y (Compose ((->) MouseEvent) (EventM t MouseEvent))
+    a = MouseEventResultF' extractors
+
+    b :: MouseEvent -> MouseEventResultF' x y (EventM t MouseEvent)
+    b = Rank2.sequence a
+
+    c :: MouseEvent -> EventM t MouseEvent (MouseEventResultF' x y Identity)
+    c = fmap (Rank2.sequence . Rank2.fmap (Compose . fmap Identity)) b
+
+    d :: MouseEvent -> EventM t MouseEvent (MouseEventResult' x y)
+    d = (fmap . fmap) coerce c
+
+  event >>= d
+
 
 {-# INLINABLE getMouseEventCoords #-}
 getMouseEventCoords :: EventM e MouseEvent (Int, Int)

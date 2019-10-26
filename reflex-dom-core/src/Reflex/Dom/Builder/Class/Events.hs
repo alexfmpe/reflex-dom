@@ -2,11 +2,19 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RankNTypes #-}
 #ifdef USE_TEMPLATE_HASKELL
 {-# LANGUAGE TemplateHaskell #-}
 #endif
 {-# LANGUAGE TypeFamilies #-}
 module Reflex.Dom.Builder.Class.Events where
+
+import Control.Lens
+import Data.Functor.Compose (Compose(..))
+import Data.Functor.Identity (Identity(..))
+import GHCJS.DOM.EventM (EventM)
+import GHCJS.DOM.MouseEvent
+import qualified Rank2
 
 #ifdef USE_TEMPLATE_HASKELL
 import Data.GADT.Compare.TH
@@ -14,6 +22,50 @@ import Data.GADT.Compare.TH
 import Data.GADT.Compare
        (GOrdering(..), (:~:)(..), GEq(..), GCompare(..))
 #endif
+
+data MouseEventResult' clientX clientY = MouseEventResult
+  { _mouseEventResult_clientX :: clientX
+  , _mouseEventResult_clientY :: clientY
+  }
+makeLenses ''MouseEventResult'
+
+type MouseEventResultF x y f = MouseEventResult' (f x) (f y)
+newtype MouseEventResultF' x y f = MouseEventResultF' { unMouseEventResultF' :: MouseEventResultF x y f }
+
+type MouseEventResult = MouseEventResult' Int Int
+type MouseEventResultId x y = MouseEventResultF' x y Identity
+type MouseEventResultExtractors t x y = MouseEventResultF x y (Compose ((->) MouseEvent) (EventM t MouseEvent))
+type MouseEventResultLenses = forall x x1 x2 y y1 y2. MouseEventResult'
+  (ALens (MouseEventResult' x1 y) (MouseEventResult' x2 y) x1 x2)
+  (ALens (MouseEventResult' x y1) (MouseEventResult' x y2) y1 y2)
+
+mouseEventResultLenses :: MouseEventResultLenses
+mouseEventResultLenses = MouseEventResult
+  { _mouseEventResult_clientX = mouseEventResult_clientX
+  , _mouseEventResult_clientY = mouseEventResult_clientY
+  }
+
+instance Rank2.Functor (MouseEventResultF' x y) where
+  f <$> (MouseEventResultF' (MouseEventResult x y))
+    = MouseEventResultF' $ MouseEventResult (f x) (f y)
+
+instance Rank2.Apply (MouseEventResultF' x y) where
+  liftA2
+    f
+    (MouseEventResultF' (MouseEventResult x y))
+    (MouseEventResultF' (MouseEventResult x' y'))
+    =
+    MouseEventResultF' (MouseEventResult (f x x') (f y y'))
+
+instance Rank2.Applicative (MouseEventResultF' x y) where
+  pure x = MouseEventResultF' $ MouseEventResult x x
+
+instance Rank2.Foldable (MouseEventResultF' x y) where
+  foldMap f (MouseEventResultF' (MouseEventResult x y)) = f x <> f y
+
+instance Rank2.Traversable (MouseEventResultF' x y) where
+  traverse f (MouseEventResultF' (MouseEventResult x' y'))
+    = fmap MouseEventResultF' $ MouseEventResult <$> f x' <*> f y'
 
 data EventTag
    = AbortTag
@@ -113,9 +165,10 @@ data EventName :: EventTag -> * where
 
 newtype EventResult en = EventResult { unEventResult :: EventResultType en }
 
+
 type family EventResultType (en :: EventTag) :: * where
   EventResultType 'ClickTag = ()
-  EventResultType 'DblclickTag = (Int, Int)
+  EventResultType 'DblclickTag = MouseEventResult
   EventResultType 'KeypressTag = Word
   EventResultType 'KeydownTag = Word
   EventResultType 'KeyupTag = Word
