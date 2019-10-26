@@ -2612,7 +2612,7 @@ instance Default (MouseEventResultExtractors t () ()) where
 instance Default (MouseEventResultExtractors t () ()) => Default (MouseEventResultExtractors t Int ()) where
   def = clientX' def
 
-instance Default (MouseEventResultExtractors t Int ()) => Default (MouseEventResultExtractors t Int Int) where
+instance Default (MouseEventResultExtractors t x ()) => Default (MouseEventResultExtractors t x Int) where
   def = clientY' def
 
 clientX'
