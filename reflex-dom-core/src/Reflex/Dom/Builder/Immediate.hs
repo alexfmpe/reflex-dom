@@ -2606,6 +2606,15 @@ mouseEventAskPayload'' field x = x & ls .~ mouseEventResultAllExtractors ^. lg
 
 mouseEventAskPayload lg ls x = x & ls .~ mouseEventResultAllExtractors ^. lg
 
+instance Default (MouseEventResultExtractors t () ()) where
+  def = mouseEventResultNoExtractors
+
+instance Default (MouseEventResultExtractors t () ()) => Default (MouseEventResultExtractors t Int ()) where
+  def = clientX' def
+
+instance Default (MouseEventResultExtractors t Int ()) => Default (MouseEventResultExtractors t Int Int) where
+  def = clientY' def
+
 clientX'
   :: MouseEventResultExtractors t () y
   -> MouseEventResultExtractors t Int y
@@ -2637,6 +2646,21 @@ getMouseEventCoords' extractors = do
 
   event >>= d
 
+mouseEventViaInput
+  :: forall t x y eventName target
+  .  MouseEventResultExtractors t x y
+  -> EventName eventName
+  -> target
+  -> Event t (MouseEventResult' x y)
+mouseEventViaInput ex _ el = undefined
+
+mouseEventViaInference
+  :: forall t x y eventName target
+   . Default (MouseEventResultExtractors t x y)
+  => EventName eventName
+  -> target
+  -> Event t (MouseEventResult' x y)
+mouseEventViaInference = mouseEventViaInput def
 
 {-# INLINABLE getMouseEventCoords #-}
 getMouseEventCoords :: EventM e MouseEvent (Int, Int)
