@@ -114,9 +114,11 @@ module Reflex.Dom.Builder.Immediate
   , hoistTraverseIntMapWithKeyWithAdjust
   ) where
 
+import GHC.Stack
+
 import Control.Concurrent
 import Control.Exception (bracketOnError)
-import Control.Lens (Identity(..), imapM_, iforM_, (^.), makeLenses)
+import Control.Lens (Identity(..), imapM_, iforM_, (^.), (&), (<>~), makeLenses)
 import Control.Monad.Exception
 import Control.Monad.Primitive
 import Control.Monad.Reader
@@ -1366,16 +1368,18 @@ instance DomSpace HydrationDomSpace where
         in DMap.alter f' en $ _ghcjsEventSpec_filters es
     }
 
+
 instance SupportsHydrationDomBuilder t m => DomBuilder t (HydrationDomBuilderT HydrationDomSpace t m) where
   type DomBuilderSpace (HydrationDomBuilderT HydrationDomSpace t m) = HydrationDomSpace
   {-# INLINABLE element #-}
-  element = elementInternal
+  element tag cfg = elementInternal tag $ cfg & elementConfig_initialAttributes <>~ Map.singleton "stacktrace" (T.pack $ show callStack)
   {-# INLINABLE textNode #-}
   textNode = textNodeInternal
   {-# INLINABLE commentNode #-}
   commentNode = commentNodeInternal
   {-# INLINABLE inputElement #-}
-  inputElement = inputElementInternal
+  inputElement cfg = inputElementInternal $ cfg
+    & inputElementConfig_elementConfig . elementConfig_initialAttributes <>~ Map.singleton "stacktrace" (T.pack $ show callStack)
   {-# INLINABLE textAreaElement #-}
   textAreaElement = textAreaElementInternal
   {-# INLINABLE selectElement #-}
@@ -1386,13 +1390,14 @@ instance SupportsHydrationDomBuilder t m => DomBuilder t (HydrationDomBuilderT H
 instance SupportsHydrationDomBuilder t m => DomBuilder t (HydrationDomBuilderT GhcjsDomSpace t m) where
   type DomBuilderSpace (HydrationDomBuilderT GhcjsDomSpace t m) = GhcjsDomSpace
   {-# INLINABLE element #-}
-  element = elementImmediate
+  element tag cfg = elementImmediate tag $ cfg & elementConfig_initialAttributes <>~ Map.singleton "stacktrace" (T.pack $ show callStack)
   {-# INLINABLE textNode #-}
   textNode = fmap TextNode . textNodeImmediate
   {-# INLINABLE commentNode #-}
   commentNode = fmap CommentNode . commentNodeImmediate
   {-# INLINABLE inputElement #-}
-  inputElement = inputElementImmediate
+  inputElement cfg = inputElementImmediate $ cfg
+    & inputElementConfig_elementConfig . elementConfig_initialAttributes <>~ Map.singleton "stacktrace" (T.pack $ show callStack)
   {-# INLINABLE textAreaElement #-}
   textAreaElement = textAreaElementImmediate
   {-# INLINABLE selectElement #-}

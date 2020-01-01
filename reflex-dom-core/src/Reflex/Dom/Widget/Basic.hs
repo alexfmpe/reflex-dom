@@ -90,6 +90,7 @@ import Data.These
 import Data.Traversable
 import Prelude hiding (mapM, mapM_, sequence, sequence_)
 
+import GHC.Stack
 -- | Breaks the given Map into pieces based on the given Set.  Each piece will contain only keys that are less than the key of the piece, and greater than or equal to the key of the piece with the next-smaller key.  There will be one additional piece containing all keys from the original Map that are larger or equal to the largest key in the Set.
 -- Either k () is used instead of Maybe k so that the resulting map of pieces is sorted so that the additional piece has the largest key.
 -- No empty pieces will be included in the output.
@@ -172,7 +173,7 @@ widgetHold_ z = void . widgetHold z
 -- >>> el "div" (text "Hello World")
 -- <div>Hello World</div>
 {-# INLINABLE el #-}
-el :: forall t m a. DomBuilder t m => Text -> m a -> m a
+el :: forall t m a. HasCallStack => DomBuilder t m => Text -> m a -> m a
 el elementTag child = snd <$> el' elementTag child
 
 -- | Create a DOM element with attributes
@@ -180,7 +181,7 @@ el elementTag child = snd <$> el' elementTag child
 -- >>> elAttr "a" ("href" =: "https://reflex-frp.org") (text "Reflex-FRP!")
 -- <a href="https://reflex-frp.org">Reflex-FRP!</a>
 {-# INLINABLE elAttr #-}
-elAttr :: forall t m a. DomBuilder t m => Text -> Map Text Text -> m a -> m a
+elAttr :: forall t m a. HasCallStack => DomBuilder t m => Text -> Map Text Text -> m a -> m a
 elAttr elementTag attrs child = snd <$> elAttr' elementTag attrs child
 
 -- | Create a DOM element with classes

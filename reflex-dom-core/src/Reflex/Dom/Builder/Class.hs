@@ -60,6 +60,7 @@ import Data.Semigroup
 import Data.String
 import Data.Text (Text)
 import Data.Type.Coercion
+import GHC.Stack
 import GHCJS.DOM.Types (JSM)
 import qualified GHCJS.DOM.Types as DOM
 
@@ -96,7 +97,7 @@ class (Monad m, Reflex t, DomSpace (DomBuilderSpace m), NotReady t m, Adjustable
                    => CommentNodeConfig t -> m (CommentNode (DomBuilderSpace m) t)
   commentNode = lift . commentNode
   {-# INLINABLE commentNode #-}
-  element :: Text -> ElementConfig er t (DomBuilderSpace m) -> m a -> m (Element er (DomBuilderSpace m) t, a)
+  element :: HasCallStack => Text -> ElementConfig er t (DomBuilderSpace m) -> m a -> m (Element er (DomBuilderSpace m) t, a)
   default element :: ( MonadTransControl f
                      , StT f a ~ a
                      , m ~ f m'
