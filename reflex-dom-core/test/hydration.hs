@@ -51,7 +51,11 @@ import Network.Wai
 import Network.WebSockets
 import Reflex.Dom.Core
 import Reflex.Dom.Widget.Input (dropdown)
+#if MIN_VERSION_reflex(0,6,4)
+import Data.Patch.DMapWithMove
+#else
 import Reflex.Patch.DMapWithMove
+#endif
 import System.Directory
 import System.Environment
 import System.IO (stderr)

@@ -19,7 +19,11 @@ import Data.Word
 import qualified Data.Map as Map
 import qualified Data.Dependent.Map as DMap
 import Data.Dependent.Sum
+#if MIN_VERSION_reflex(0,6,4)
+import qualified Data.Patch.DMapWithMove as PatchDMapWithMove
+#else
 import qualified Reflex.Patch.DMapWithMove as PatchDMapWithMove
+#endif
 
 main :: IO ()
 main = mainWidget w

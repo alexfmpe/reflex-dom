@@ -159,8 +159,13 @@ import Reflex.Class as Reflex
 import Reflex.Dom.Builder.Class
 import Reflex.Dynamic
 import Reflex.Host.Class
+#if MIN_VERSION_reflex(0,6,4)
+import Data.Patch.DMapWithMove (PatchDMapWithMove(..))
+import Data.Patch.MapWithMove (PatchMapWithMove(..))
+#else
 import Reflex.Patch.DMapWithMove (PatchDMapWithMove(..))
 import Reflex.Patch.MapWithMove (PatchMapWithMove(..))
+#endif
 import Reflex.PerformEvent.Base (PerformEventT)
 import Reflex.PerformEvent.Class
 import Reflex.PostBuild.Base (PostBuildT)
@@ -199,9 +204,15 @@ import qualified GHCJS.DOM.TouchList as TouchList
 import qualified GHCJS.DOM.Types as DOM
 import qualified GHCJS.DOM.Window as Window
 import qualified GHCJS.DOM.WheelEvent as WheelEvent
+#if MIN_VERSION_reflex(0,6,4)
+import qualified Data.Patch.DMap as PatchDMap
+import qualified Data.Patch.DMapWithMove as PatchDMapWithMove
+import qualified Data.Patch.MapWithMove as PatchMapWithMove
+#else
 import qualified Reflex.Patch.DMap as PatchDMap
 import qualified Reflex.Patch.DMapWithMove as PatchDMapWithMove
 import qualified Reflex.Patch.MapWithMove as PatchMapWithMove
+#endif
 import qualified Reflex.TriggerEvent.Base as TriggerEventT (askEvents)
 
 #ifndef USE_TEMPLATE_HASKELL
