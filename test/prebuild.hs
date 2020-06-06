@@ -19,7 +19,7 @@ import Data.Word
 import qualified Data.Map as Map
 import qualified Data.Dependent.Map as DMap
 import Data.Dependent.Sum
-import qualified Reflex.Patch.DMapWithMove as PatchDMapWithMove
+import qualified Data.Patch.DMapWithMove as PatchDMapWithMove
 
 main :: IO ()
 main = mainWidget w
